@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Felicidad Mundial y PIB</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/6.7.0/d3.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            margin: 0; /* Eliminar márgenes del body */
+            overflow: hidden; /* Evitar el desplazamiento */
+        }
+        #myDiv {
+            position: fixed; /* Hacer que el div sea fijo */
+            top: 0; /* Alinearlo en la parte superior */
+            left: 0; /* Alinearlo a la izquierda */
+            width: 100vw; /* Ancho completo de la ventana */
+            height: 100vh; /* Altura completa de la ventana */
+        }
+    </style>
+</head>
+<body>
+    <div id="myDiv"></div>
+    <script>
+        d3.csv('world_happiness_and_pib.csv').then(function(rows) {
+            function unpack(rows, key) {
+                return rows.map(function(row) { return row[key]; });
+            }
+
+            // Extraer datos del CSV
+            var locations = unpack(rows, 'Country');
+            var population = unpack(rows, 'Population 2024').map(function(pop) {
+                return pop / 1000000; // Convertir población a millones
+            });
+            var pib = unpack(rows, 'Log GDP per capita');
+            var happiness = unpack(rows, 'happiness_score');
+
+            // Función para clasificar el índice de felicidad según las condiciones
+            function happinessDescription(score) {
+                if (score >= 1.4) {
+                    return "Muy Feliz";
+                } else if (score >= 0.9) {
+                    return "Feliz";
+                } else if (score <= 1) {
+                    return "Triste";
+                } else {
+                    return "Muy Triste";
+                }
+            }
+
+            // Crear el texto para el hover
+            var hoverText = locations.map((loc, index) => {
+                let happinessLabel = happinessDescription(happiness[index]);
+                return `${loc}<br>PIB per cápita: ${pib[index]}<br>Población: ${population[index].toFixed(2)} millones<br>Estado de Felicidad: ${happinessLabel}`;
+            });
+
+            // Usar la escala de colores perceptual 'Cividis', que es amigable para el daltonismo
+            var data = [{
+                type: 'choropleth',
+                locationmode: 'country names',
+                locations: locations,
+                z: happiness,
+                text: locations,
+                hoverinfo: 'text',
+                hovertext: hoverText,
+                colorscale: 'Cividis', // Escala de color perceptual uniforme
+                zmin: 0, // Límite inferior (Muy Triste)
+                zmax: 1.5, // Límite superior (Muy Feliz)
+                colorbar: {
+                    title: {
+                        text: 'Estado de Felicidad',
+                        side: 'right'
+                    },
+                    tickvals: [0.5, 1, 1.25, 1.4],
+                    ticktext: ['Muy Triste', 'Triste', 'Feliz', 'Muy Feliz'],
+                    ticks: 'outside'
+                },
+                autocolorscale: false
+            }];
+
+            var layout = {
+                title: 'Felicidad Mundial y su relación con el PIB',
+                geo: {
+                    projection: {
+                        type: 'robinson'
+                    },
+                    scrollzoom: false,
+                    draggable: false
+                },
+                showlegend: true
+            };
+
+            Plotly.newPlot("myDiv", data, layout, {showLink: false});
+        }).catch(function(error) {
+            console.error('Error al cargar el CSV:', error);
+        });
+    </script>
+</body>
+</html>
