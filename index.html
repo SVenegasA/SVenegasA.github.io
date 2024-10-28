@@ -8,27 +8,30 @@
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
         body {
-            margin: 0; /* Eliminar márgenes del body */
-            overflow: hidden; /* Evitar el desplazamiento */
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
         #myDiv {
-            position: fixed; /* Hacer que el div sea fijo */
-            top: 0; /* Alinearlo en la parte superior */
-            left: 0; /* Alinearlo a la izquierda */
-            width: 100vw; /* Ancho completo de la ventana */
-            height: 100vh; /* Altura completa de la ventana */
+            flex: 1; /* Hace que el mapa ocupe la mayor parte del espacio */
+            height: 100%; /* Aumentar altura del mapa */
+        }
+        #barChart {
+            width: 100%; /* Asegura que el gráfico de barras ocupe el ancho completo */
+            height: 30vh; /* Ajusta la altura del gráfico de barras */
         }
     </style>
 </head>
 <body>
     <div id="myDiv"></div>
+    <div id="barChart"></div>
     <script>
         d3.csv('world_happiness_and_pib.csv').then(function(rows) {
             function unpack(rows, key) {
                 return rows.map(function(row) { return row[key]; });
             }
 
-            // Extraer datos del CSV
             var locations = unpack(rows, 'Country');
             var population = unpack(rows, 'Population 2024').map(function(pop) {
                 return pop / 1000000; // Convertir población a millones
@@ -36,62 +39,177 @@
             var pib = unpack(rows, 'Log GDP per capita');
             var happiness = unpack(rows, 'happiness_score');
 
-            // Función para clasificar el índice de felicidad según las condiciones
+            // Filtrar los países deseados con nombres en inglés
+            var selectedCountries = [
+                "Finland", "Mali", "United States", "Iceland", "Australia",
+                "Afghanistan", "South Sudan", "Tanzania", "Rwanda", "Dominican Republic",
+                "Botswana", "Costa Rica", "Bulgaria", "Chile",
+                "Argentina", "Colombia", "Italy"
+            ];
+
+            // Crear un conjunto de índices para los países seleccionados
+            var selectedIndices = locations.map((loc, index) => selectedCountries.includes(loc) ? index : -1).filter(index => index !== -1);
+
+            // Obtener datos de países seleccionados
+            var filteredLocations = selectedIndices.map(index => locations[index]);
+            var filteredPib = selectedIndices.map(index => pib[index]);
+            var filteredHappiness = selectedIndices.map(index => happiness[index]);
+            var filteredPopulation = selectedIndices.map(index => population[index]);
+
             function happinessDescription(score) {
-                if (score >= 1.4) {
-                    return "Muy Feliz";
-                } else if (score >= 0.9) {
-                    return "Feliz";
-                } else if (score <= 1) {
-                    return "Triste";
-                } else {
-                    return "Muy Triste";
-                }
+                if (score >= 1.4) return "Very Happy";
+                else if (score >= 1.0) return "Happy";
+                else if (score >= 0.6) return "Sad";
+                else return "Very Sad";
             }
 
-            // Crear el texto para el hover
-            var hoverText = locations.map((loc, index) => {
-                let happinessLabel = happinessDescription(happiness[index]);
-                return `${loc}<br>PIB per cápita: ${pib[index]}<br>Población: ${population[index].toFixed(2)} millones<br>Estado de Felicidad: ${happinessLabel}`;
+            function happinessColor(score) {
+                if (score >= 1.4) return "yellow";
+                else if (score >= 1.0) return "#FFA500";
+                else if (score >= 0.6) return "#8B4513";
+                else return "#00008B";
+            }
+
+            var hoverText = filteredLocations.map((loc, index) => {
+                let happinessLabel = happinessDescription(filteredHappiness[index]);
+                return `${loc}<br>GDP per capita: ${filteredPib[index]}<br>Population: ${filteredPopulation[index].toFixed(2)} million<br>Happiness Status: ${happinessLabel}`;
             });
 
-            // Usar la escala de colores perceptual 'Cividis', que es amigable para el daltonismo
+            var colors = filteredHappiness.map(score => happinessColor(score));
+
             var data = [{
                 type: 'choropleth',
                 locationmode: 'country names',
                 locations: locations,
                 z: happiness,
-                text: locations,
+                text: locations.map((loc, index) => {
+                    let happinessLabel = happinessDescription(happiness[index]);
+                    return `${loc}<br>GDP per capita: ${pib[index]}<br>Population: ${population[index].toFixed(2)} million<br>Happiness Status: ${happinessLabel}`;
+                }),
                 hoverinfo: 'text',
-                hovertext: hoverText,
-                colorscale: 'Cividis', // Escala de color perceptual uniforme
-                zmin: 0, // Límite inferior (Muy Triste)
-                zmax: 1.5, // Límite superior (Muy Feliz)
+                colorscale: [
+                    [0, '#00008B'],
+                    [0.4, '#8B4513'],
+                    [0.8, '#FFA500'],
+                    [1, 'yellow']
+                ],
+                zmin: 0,
+                zmax: 1.5,
                 colorbar: {
-                    title: {
-                        text: 'Estado de Felicidad',
-                        side: 'right'
-                    },
-                    tickvals: [0.5, 1, 1.25, 1.4],
-                    ticktext: ['Muy Triste', 'Triste', 'Feliz', 'Muy Feliz'],
+                    title: { text: 'Happiness Status', side: 'right' },
+                    tickvals: [0.4, 0.8, 1.2, 1.4],
+                    ticktext: ['Very Sad', 'Sad', 'Happy', 'Very Happy'],
                     ticks: 'outside'
                 },
                 autocolorscale: false
             }];
 
             var layout = {
-                title: 'Felicidad Mundial y su relación con el PIB',
+                title: 'Global Happiness and its relation to GDP',
                 geo: {
-                    projection: {
-                        type: 'robinson'
-                    },
+                    projection: { type: 'robinson' },
                     scrollzoom: false,
                     draggable: false
                 },
-                showlegend: true
+                annotations: selectedIndices.map(index => {
+                    const loc = locations[index];
+                    const gdp = pib[index];
+                    const happinessScore = happiness[index];
+                    const happinessLabel = happinessDescription(happinessScore);
+                    
+                    return {
+                        x: loc,
+                        y: happinessScore + 0.1, // Offset to evitar superposición
+                        text: `In ${loc}, GDP: ${gdp}<br>Status: ${happinessLabel}`,
+                        showarrow: true,
+                        arrowhead: 2,
+                        ax: 20,
+                        ay: -30,
+                        font: {
+                            size: 10,
+                            color: '#000'
+                        },
+                        bgcolor: '#fff',
+                        bordercolor: '#000',
+                        borderwidth: 1,
+                        borderpad: 4,
+                        opacity: 0.8,
+                    };
+                })
             };
 
-            Plotly.newPlot("myDiv", data, layout, {showLink: false});
+            Plotly.newPlot("myDiv", data, layout, { showLink: false });
+
+            // Crear gráfico de barras con solo los países seleccionados
+            var barData = [{
+                x: filteredLocations,
+                y: filteredPib,
+                type: 'bar',
+                text: filteredPib.map(d => `GDP per capita: ${d}`),
+                hoverinfo: 'text',
+                marker: {
+                    color: 'rgba(55, 128, 191, 0.6)',
+                    line: { color: 'rgba(55, 128, 191, 1.0)', width: 1 }
+                }
+            }];
+
+            // Ordenar los datos de menor a mayor PIB
+            var sortedIndices = filteredPib
+                .map((value, index) => [value, index])
+                .sort((a, b) => a[0] - b[0])
+                .map(([, index]) => index);
+
+            // Reordenar los datos según los índices ordenados
+            var sortedLocations = sortedIndices.map(index => filteredLocations[index]);
+            var sortedPib = sortedIndices.map(index => filteredPib[index]);
+            var sortedHappiness = sortedIndices.map(index => filteredHappiness[index]);
+            var sortedHoverText = sortedIndices.map(index => hoverText[index]);
+
+            var sortedBarData = [{
+                x: sortedLocations,
+                y: sortedPib,
+                type: 'bar',
+                text: sortedHoverText,
+                hoverinfo: 'text',
+                marker: {
+                    color: 'rgba(55, 128, 191, 0.6)',
+                    line: { color: 'rgba(55, 128, 191, 1.0)', width: 1 }
+                }
+            }];
+
+            var barLayout = {
+                title: 'GDP per capita by country',
+                xaxis: { title: 'Countries', automargin: true },
+                yaxis: { title: 'GDP per capita (log)', automargin: true },
+                margin: { t: 50, l: 50, r: 50, b: 100 },
+            };
+
+            Plotly.newPlot("barChart", sortedBarData, barLayout, { showLink: false });
+
+            // Manejar clic en el mapa
+            document.getElementById('myDiv').on('plotly_click', function(data) {
+                var countryName = data.points[0].location;
+                var countryIndex = sortedLocations.indexOf(countryName);
+
+                // Resaltar la barra correspondiente en el gráfico de barras
+                var updatedBarData = [{
+                    x: sortedLocations,
+                    y: sortedPib,
+                    type: 'bar',
+                    text: sortedHoverText,
+                    hoverinfo: 'text',
+                    marker: {
+                        color: sortedPib.map((_, i) => i === countryIndex ? 'red' : 'rgba(55, 128, 191, 0.6)'),
+                        line: { color: 'rgba(55, 128, 191, 1.0)', width: 1 }
+                    }
+                }];
+
+                Plotly.react('barChart', updatedBarData, barLayout);
+
+                // Actualizar las anotaciones para que desaparezcan
+                layout.annotations = [];
+                Plotly.relayout('myDiv', layout);
+            });
         }).catch(function(error) {
             console.error('Error al cargar el CSV:', error);
         });
