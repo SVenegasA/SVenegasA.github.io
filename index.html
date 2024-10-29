@@ -14,12 +14,14 @@
             flex-direction: column;
         }
         #myDiv {
-            flex: 1; /* Hace que el mapa ocupe la mayor parte del espacio */
-            height: 100%; /* Aumentar altura del mapa */
+        flex-grow: 1; /* Permite que el mapa crezca lo máximo posible */
+        width: 100vw; /* Asegura que ocupe todo el ancho de la pantalla */
+        height: 80vh; /* Aumenta la altura del mapa en relación al viewport */
+        padding: 0; /* Elimina posibles márgenes o rellenos */
         }
         #barChart {
-            width: 100%; /* Asegura que el gráfico de barras ocupe el ancho completo */
-            height: 30vh; /* Ajusta la altura del gráfico de barras */
+        width: 100%; /* Mantiene el gráfico de barras en el ancho total de la pantalla */
+        height: 30vh; /* Mantén el 30vh o ajusta si necesitas más espacio */    
         }
     </style>
 </head>
@@ -39,28 +41,11 @@
             var pib = unpack(rows, 'Log GDP per capita');
             var happiness = unpack(rows, 'happiness_score');
 
-            // Filtrar los países deseados con nombres en inglés
-            var selectedCountries = [
-                "Finland", "Mali", "United States", "Iceland", "Australia",
-                "Afghanistan", "South Sudan", "Tanzania", "Rwanda", "Dominican Republic",
-                "Botswana", "Costa Rica", "Bulgaria", "Chile",
-                "Argentina", "Colombia", "Italy"
-            ];
-
-            // Crear un conjunto de índices para los países seleccionados
-            var selectedIndices = locations.map((loc, index) => selectedCountries.includes(loc) ? index : -1).filter(index => index !== -1);
-
-            // Obtener datos de países seleccionados
-            var filteredLocations = selectedIndices.map(index => locations[index]);
-            var filteredPib = selectedIndices.map(index => pib[index]);
-            var filteredHappiness = selectedIndices.map(index => happiness[index]);
-            var filteredPopulation = selectedIndices.map(index => population[index]);
-
             function happinessDescription(score) {
-                if (score >= 1.4) return "Very Happy";
-                else if (score >= 1.0) return "Happy";
-                else if (score >= 0.6) return "Sad";
-                else return "Very Sad";
+                if (score >= 1.4) return "Muy feliz";
+                else if (score >= 1.0) return "Feliz";
+                else if (score >= 0.6) return "Triste";
+                else return "Muy triste";
             }
 
             function happinessColor(score) {
@@ -70,12 +55,12 @@
                 else return "#00008B";
             }
 
-            var hoverText = filteredLocations.map((loc, index) => {
-                let happinessLabel = happinessDescription(filteredHappiness[index]);
-                return `${loc}<br>GDP per capita: ${filteredPib[index]}<br>Population: ${filteredPopulation[index].toFixed(2)} million<br>Happiness Status: ${happinessLabel}`;
+            var hoverText = locations.map((loc, index) => {
+                let happinessLabel = happinessDescription(happiness[index]);
+                return `${loc}<br>PIB per capita: ${pib[index]}<br>Población: ${population[index].toFixed(2)} millones<br>Estado de felicidad: ${happinessLabel}`;
             });
 
-            var colors = filteredHappiness.map(score => happinessColor(score));
+            var colors = happiness.map(score => happinessColor(score));
 
             var data = [{
                 type: 'choropleth',
@@ -84,7 +69,7 @@
                 z: happiness,
                 text: locations.map((loc, index) => {
                     let happinessLabel = happinessDescription(happiness[index]);
-                    return `${loc}<br>GDP per capita: ${pib[index]}<br>Population: ${population[index].toFixed(2)} million<br>Happiness Status: ${happinessLabel}`;
+                    return `${loc}<br>PIB per capita: ${pib[index]}<br>Población: ${population[index].toFixed(2)} millones<br>Estado de felicidad: ${happinessLabel}`;
                 }),
                 hoverinfo: 'text',
                 colorscale: [
@@ -96,76 +81,38 @@
                 zmin: 0,
                 zmax: 1.5,
                 colorbar: {
-                    title: { text: 'Happiness Status', side: 'right' },
+                    title: { text: '', side: 'right' },
                     tickvals: [0.4, 0.8, 1.2, 1.4],
-                    ticktext: ['Very Sad', 'Sad', 'Happy', 'Very Happy'],
+                    ticktext: ['Muy triste', 'Triste', 'Feliz', 'Muy feliz'],
                     ticks: 'outside'
                 },
                 autocolorscale: false
             }];
 
             var layout = {
-                title: 'Global Happiness and its relation to GDP',
+                title: 'Felicidad global y su relación con el PIB',
                 geo: {
                     projection: { type: 'robinson' },
                     scrollzoom: false,
                     draggable: false
-                },
-                annotations: selectedIndices.map(index => {
-                    const loc = locations[index];
-                    const gdp = pib[index];
-                    const happinessScore = happiness[index];
-                    const happinessLabel = happinessDescription(happinessScore);
-                    
-                    return {
-                        x: loc,
-                        y: happinessScore + 0.1, // Offset to evitar superposición
-                        text: `In ${loc}, GDP: ${gdp}<br>Status: ${happinessLabel}`,
-                        showarrow: true,
-                        arrowhead: 2,
-                        ax: 20,
-                        ay: -30,
-                        font: {
-                            size: 10,
-                            color: '#000'
-                        },
-                        bgcolor: '#fff',
-                        bordercolor: '#000',
-                        borderwidth: 1,
-                        borderpad: 4,
-                        opacity: 0.8,
-                    };
-                })
+                }
             };
 
             Plotly.newPlot("myDiv", data, layout, { showLink: false });
 
-            // Crear gráfico de barras con solo los países seleccionados
-            var barData = [{
-                x: filteredLocations,
-                y: filteredPib,
-                type: 'bar',
-                text: filteredPib.map(d => `GDP per capita: ${d}`),
-                hoverinfo: 'text',
-                marker: {
-                    color: 'rgba(55, 128, 191, 0.6)',
-                    line: { color: 'rgba(55, 128, 191, 1.0)', width: 1 }
-                }
-            }];
-
-            // Ordenar los datos de menor a mayor PIB
-            var sortedIndices = filteredPib
+            // Ordenar los datos de todos los países por índice de felicidad
+            var sortedIndices = happiness
                 .map((value, index) => [value, index])
                 .sort((a, b) => a[0] - b[0])
                 .map(([, index]) => index);
 
-            // Reordenar los datos según los índices ordenados
-            var sortedLocations = sortedIndices.map(index => filteredLocations[index]);
-            var sortedPib = sortedIndices.map(index => filteredPib[index]);
-            var sortedHappiness = sortedIndices.map(index => filteredHappiness[index]);
+            // Reordenar los datos para el gráfico de barras
+            var sortedLocations = sortedIndices.map(index => locations[index]);
+            var sortedPib = sortedIndices.map(index => pib[index]);
+            var sortedHappiness = sortedIndices.map(index => happiness[index]);
             var sortedHoverText = sortedIndices.map(index => hoverText[index]);
 
-            var sortedBarData = [{
+            var barData = [{
                 x: sortedLocations,
                 y: sortedPib,
                 type: 'bar',
@@ -178,13 +125,22 @@
             }];
 
             var barLayout = {
-                title: 'GDP per capita by country',
-                xaxis: { title: 'Countries', automargin: true },
-                yaxis: { title: 'GDP per capita (log)', automargin: true },
+                title: 'PIB per capita e Indice de Felicidad',
+                xaxis: { 
+                    title: { 
+                        text: '← Menos Feliz  |  Más feliz →', 
+                        standoff: 10,
+                    },
+                    tickvals: [], // Oculta las etiquetas de países
+                    automargin: true,
+                },
+                yaxis: { title: 'PIB per capita',
+                         automargin: true,
+                         showticklabels:false },
                 margin: { t: 50, l: 50, r: 50, b: 100 },
             };
 
-            Plotly.newPlot("barChart", sortedBarData, barLayout, { showLink: false });
+            Plotly.newPlot("barChart", barData, barLayout, { showLink: false });
 
             // Manejar clic en el mapa
             document.getElementById('myDiv').on('plotly_click', function(data) {
@@ -205,10 +161,6 @@
                 }];
 
                 Plotly.react('barChart', updatedBarData, barLayout);
-
-                // Actualizar las anotaciones para que desaparezcan
-                layout.annotations = [];
-                Plotly.relayout('myDiv', layout);
             });
         }).catch(function(error) {
             console.error('Error al cargar el CSV:', error);
