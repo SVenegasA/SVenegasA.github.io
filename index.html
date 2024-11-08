@@ -6,6 +6,7 @@
     <title>Felicidad Mundial y PIB</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/6.7.0/d3.min.js"></script>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/15.1.3/Tone.js"></script>
     <style>
         body {
             margin: 0;
@@ -14,14 +15,14 @@
             flex-direction: column;
         }
         #myDiv {
-        flex-grow: 1; /* Permite que el mapa crezca lo máximo posible */
-        width: 100vw; /* Asegura que ocupe todo el ancho de la pantalla */
-        height: 80vh; /* Aumenta la altura del mapa en relación al viewport */
-        padding: 0; /* Elimina posibles márgenes o rellenos */
+            flex-grow: 1;
+            width: 100vw;
+            height: 80vh;
+            padding: 0;
         }
         #barChart {
-        width: 100%; /* Mantiene el gráfico de barras en el ancho total de la pantalla */
-        height: 30vh; /* Mantén el 30vh o ajusta si necesitas más espacio */    
+            width: 100%;
+            height: 30vh;
         }
     </style>
 </head>
@@ -36,7 +37,7 @@
 
             var locations = unpack(rows, 'Country');
             var population = unpack(rows, 'Population 2024').map(function(pop) {
-                return pop / 1000000; // Convertir población a millones
+                return pop / 1000000;
             });
             var pib = unpack(rows, 'Log GDP per capita');
             var happiness = unpack(rows, 'happiness_score');
@@ -56,9 +57,10 @@
             }
 
             var hoverText = locations.map((loc, index) => {
-                let happinessLabel = happinessDescription(happiness[index]);
-                return `${loc}<br>PIB per capita: ${pib[index]}<br>Población: ${population[index].toFixed(2)} millones<br>Estado de felicidad: ${happinessLabel}`;
+            let happinessLabel = happinessDescription(happiness[index]);
+            return `${loc}<br>PIB per capita: ${pib[index]}<br>Población: ${population[index].toFixed(2)} millones<br>Estado de felicidad: ${happinessLabel}`;
             });
+
 
             var colors = happiness.map(score => happinessColor(score));
 
@@ -67,10 +69,7 @@
                 locationmode: 'country names',
                 locations: locations,
                 z: happiness,
-                text: locations.map((loc, index) => {
-                    let happinessLabel = happinessDescription(happiness[index]);
-                    return `${loc}<br>PIB per capita: ${pib[index]}<br>Población: ${population[index].toFixed(2)} millones<br>Estado de felicidad: ${happinessLabel}`;
-                }),
+                text: hoverText,
                 hoverinfo: 'text',
                 colorscale: [
                     [0, '#00008B'],
@@ -131,21 +130,44 @@
                         text: '← Menos Feliz  |  Más feliz →', 
                         standoff: 10,
                     },
-                    tickvals: [], // Oculta las etiquetas de países
+                    tickvals: [],
                     automargin: true,
                 },
                 yaxis: { title: 'PIB per capita',
                          automargin: true,
-                         showticklabels:false },
+                         showticklabels: false },
                 margin: { t: 50, l: 50, r: 50, b: 100 },
             };
 
             Plotly.newPlot("barChart", barData, barLayout, { showLink: false });
 
+            // Sonidos
+            const laughter = new Tone.Player("mp3/risa.mp3").toDestination();
+            const crickets = new Tone.Player("mp3/grillos.mp3").toDestination();
+            const sadSound = new Tone.Player("mp3/tristeza.mp3").toDestination();
+
+            function playSound(score) {
+                if (score >= 1.4) {
+                    laughter.start();
+                    laughter.volume.value = 10 * score - 14; // ajusta el volumen basado en el nivel de felicidad
+                } else if (score >= 1.0) {
+                    laughter.start();
+                } else if (score >= 0.6) {
+                    crickets.start();
+                } else {
+                    sadSound.start();
+                    sadSound.volume.value = -10 * score; // ajusta el volumen basado en el nivel de tristeza
+                }
+            }
+
             // Manejar clic en el mapa
             document.getElementById('myDiv').on('plotly_click', function(data) {
                 var countryName = data.points[0].location;
                 var countryIndex = sortedLocations.indexOf(countryName);
+                var happinessScore = sortedHappiness[countryIndex];
+
+                // Reproduce el sonido según el puntaje de felicidad
+                playSound(happinessScore);
 
                 // Resaltar la barra correspondiente en el gráfico de barras
                 var updatedBarData = [{
