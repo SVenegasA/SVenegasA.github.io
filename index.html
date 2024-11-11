@@ -57,10 +57,9 @@
             }
 
             var hoverText = locations.map((loc, index) => {
-            let happinessLabel = happinessDescription(happiness[index]);
-            return `${loc}<br>PIB per capita: ${pib[index]}<br>Población: ${population[index].toFixed(2)} millones<br>Estado de felicidad: ${happinessLabel}`;
+                let happinessLabel = happinessDescription(happiness[index]);
+                return `${loc}<br>PIB per capita: ${pib[index]}<br>Población: ${population[index].toFixed(2)} millones<br>Estado de felicidad: ${happinessLabel}`;
             });
-
 
             var colors = happiness.map(score => happinessColor(score));
 
@@ -111,6 +110,14 @@
             var sortedHappiness = sortedIndices.map(index => happiness[index]);
             var sortedHoverText = sortedIndices.map(index => hoverText[index]);
 
+            // Calcular el promedio de PIB
+            // Calcular el promedio de PIB, asegurando que cada valor sea numérico
+            var averagePib = sortedPib
+            .map(value => parseFloat(value))  // Convertir cada valor a número
+            .filter(value => !isNaN(value))   // Filtrar valores no numéricos, si los hay
+            .reduce((sum, value) => sum + value, 0) / sortedPib.length;
+
+
             var barData = [{
                 x: sortedLocations,
                 y: sortedPib,
@@ -123,8 +130,77 @@
                 }
             }];
 
+            // Crear las anotaciones
+            var annotations = [
+                {
+                    x: "Iceland",
+                    y: sortedPib[sortedLocations.indexOf("Iceland")],
+                    text: "¡País más feliz!",
+                    showarrow: true,
+                    arrowhead: 2,
+                    ax: 0,
+                    ay: -40,
+                    font: { color: "black", size: 10 }
+                },
+                {
+                    x: "United States",
+                    y: sortedPib[sortedLocations.indexOf("United States")],
+                    text: "Alto PIB<br>pero menos feliz que ISL",
+                    showarrow: true,
+                    arrowhead: 2,
+                    ax: 0,
+                    ay: -40,
+                    font: { color: "black", size: 10 }
+                },
+                {
+                    x: "Kyrgyzstan",
+                    y: sortedPib[sortedLocations.indexOf("United States")],
+                    text: "bajo PIB<br>pero más feliz que varios<br> países con mayor PIB",
+                    showarrow: true,
+                    arrowhead: 2,
+                    ax: 0,
+                    ay: -30,
+                    font: { color: "black", size: 10 }
+                },
+                {
+                    x: "Afghanistan",
+                    y: sortedPib[sortedLocations.indexOf("Afghanistan")],
+                    text: "Es el país<br>más triste",
+                    showarrow: true,
+                    arrowhead: 2,
+                    ax: 0,
+                    ay: -30,
+                    font: { color: "black", size: 10 }
+                },
+                {
+                    x: "Mozambique",
+                    y: sortedPib[sortedLocations.indexOf("Mozambique")],
+                    text: "Muy pobre, pero más feliz <br>que países como Sri Lanka<br> (con mayor PIB)",
+                    showarrow: true,
+                    arrowhead: 2,
+                    ax: 0,
+                    ay: -50,
+                    font: { color: "black", size: 10 }
+                },
+                {
+                    xref: 'paper',   // Usar coordenadas relativas al gráfico
+                    x: 1.03,         // Posición horizontal ligeramente fuera del gráfico, a la derecha
+                    y: averagePib + 1,   // Colocación vertical al nivel del promedio
+                    text: 'Promedio<br> PIB',
+                    showarrow: false,
+                    font: { color: "black", size: 12 },
+                    align: 'left'
+                }
+            ];
+
             var barLayout = {
-                title: 'PIB per capita e Indice de Felicidad',
+                title: {
+                    text: 'PIB per capita e Índice de Felicidad',
+                    font: {
+                        size: 16
+                    },
+                    y: 0.999
+                },
                 xaxis: { 
                     title: { 
                         text: '← Menos Feliz  |  Más feliz →', 
@@ -133,57 +209,33 @@
                     tickvals: [],
                     automargin: true,
                 },
-                yaxis: { title: 'PIB per capita',
-                         automargin: true,
-                         showticklabels: false },
+                yaxis: { 
+                    title: 'PIB per capita',
+                    automargin: true,
+                    showticklabels: false
+                },
                 margin: { t: 50, l: 50, r: 50, b: 100 },
+                annotations: annotations,
+                shapes: [
+                    {
+                        type: 'line',
+                        xref: 'paper',  // Referencia relativa para cubrir todo el gráfico
+                        yref: 'y',
+                        x0: 0,
+                        x1: 1,
+                        y0: averagePib,
+                        y1: averagePib,
+                        line: {
+                            color: 'black',
+                            width: 2,
+                            dash: 'dashdot'
+                        }
+                    }
+                ]
             };
 
+            // Renderiza el gráfico de barras con las anotaciones y la línea de promedio
             Plotly.newPlot("barChart", barData, barLayout, { showLink: false });
-
-            // Sonidos
-            const laughter = new Tone.Player("mp3/risa.mp3").toDestination();
-            const crickets = new Tone.Player("mp3/grillos.mp3").toDestination();
-            const sadSound = new Tone.Player("mp3/tristeza.mp3").toDestination();
-
-            function playSound(score) {
-                if (score >= 1.4) {
-                    laughter.start();
-                    laughter.volume.value = 10 * score - 14; // ajusta el volumen basado en el nivel de felicidad
-                } else if (score >= 1.0) {
-                    laughter.start();
-                } else if (score >= 0.6) {
-                    crickets.start();
-                } else {
-                    sadSound.start();
-                    sadSound.volume.value = -10 * score; // ajusta el volumen basado en el nivel de tristeza
-                }
-            }
-
-            // Manejar clic en el mapa
-            document.getElementById('myDiv').on('plotly_click', function(data) {
-                var countryName = data.points[0].location;
-                var countryIndex = sortedLocations.indexOf(countryName);
-                var happinessScore = sortedHappiness[countryIndex];
-
-                // Reproduce el sonido según el puntaje de felicidad
-                playSound(happinessScore);
-
-                // Resaltar la barra correspondiente en el gráfico de barras
-                var updatedBarData = [{
-                    x: sortedLocations,
-                    y: sortedPib,
-                    type: 'bar',
-                    text: sortedHoverText,
-                    hoverinfo: 'text',
-                    marker: {
-                        color: sortedPib.map((_, i) => i === countryIndex ? 'red' : 'rgba(55, 128, 191, 0.6)'),
-                        line: { color: 'rgba(55, 128, 191, 1.0)', width: 1 }
-                    }
-                }];
-
-                Plotly.react('barChart', updatedBarData, barLayout);
-            });
         }).catch(function(error) {
             console.error('Error al cargar el CSV:', error);
         });
