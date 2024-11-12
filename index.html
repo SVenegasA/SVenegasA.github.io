@@ -130,6 +130,50 @@
                 }
             }];
 
+
+
+        // Sonidos
+        const laughter = new Tone.Player("mp3/risa.mp3").toDestination();
+            const crickets = new Tone.Player("mp3/grillos.mp3").toDestination();
+            const sadSound = new Tone.Player("mp3/tristeza.mp3").toDestination();
+            function playSound(score) {
+                if (score >= 1.4) {
+                    laughter.start();
+                    laughter.volume.value = 10 * score - 14; // ajusta el volumen basado en el nivel de felicidad
+                } else if (score >= 1.0) {
+                    laughter.start();
+                } else if (score >= 0.6) {
+                    crickets.start();
+                } else {
+                    sadSound.start();
+                    sadSound.volume.value = -10 * score; // ajusta el volumen basado en el nivel de tristeza
+                }
+            }
+            // Manejar clic en el mapa
+            document.getElementById('myDiv').on('plotly_click', function(data) {
+                var countryName = data.points[0].location;
+                var countryIndex = sortedLocations.indexOf(countryName);
+                var happinessScore = sortedHappiness[countryIndex];
+                // Reproduce el sonido según el puntaje de felicidad
+                playSound(happinessScore);
+
+                // Resaltar la barra correspondiente en el gráfico de barras
+                var updatedBarData = [{
+                    x: sortedLocations,
+                    y: sortedPib,
+                    type: 'bar',
+                    text: sortedHoverText,
+                    hoverinfo: 'text',
+                    marker: {
+                        color: sortedPib.map((_, i) => i === countryIndex ? 'red' : 'rgba(55, 128, 191, 0.6)'),
+                        line: { color: 'rgba(55, 128, 191, 1.0)', width: 1 }
+                    }
+                }];
+
+                Plotly.react('barChart', updatedBarData, barLayout);
+            });
+
+
             // Crear las anotaciones
             var annotations = [
                 {
