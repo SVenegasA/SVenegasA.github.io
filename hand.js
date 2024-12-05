@@ -2,14 +2,14 @@ import HandSensor from './js/handSensor.js?ffha';
 import Protobject from './js/protobject.js';
 
 // Iniciar el HandSensor
-HandSensor.start(100, 0);
+HandSensor.start(100, 1);
 
 // Mostrar la vista previa del video en la posición y tamaño especificados
 HandSensor.showPreview({
     top: 0,
     left: 0,
     width: 1920/2,
-    height: 1200/2
+    height: 720/2
 });
 
 // Hacer flip horizontal de la imagen

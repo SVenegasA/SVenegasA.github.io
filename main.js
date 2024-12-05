@@ -1005,11 +1005,11 @@ var countryName = "";
 // Función que recibe datos (coordenadas x, y) y actualiza la posición del triángulo en el mapa
 Protobject.onReceived((data) => {
     // Mapea el valor de data.y, que va de 0.2 a 0.8, al rango de 0 a 600 píxeles para el movimiento vertical
-    let cursorTop = mapValue(data.y, 0.2, 0.8, 0, 600);
+    let cursorTop = mapValue(data.y, 0.2, 0.8, 0, 857);
     triangle.style.top = cursorTop + 'px'; // Actualiza la posición vertical del triángulo
 
     // Mapea el valor de data.x, que va de 0.2 a 0.8, al rango de 0 a 800 píxeles para el movimiento horizontal
-    let cursorLeft = mapValue(data.x, 0.2, 0.8, 0, 800);
+    let cursorLeft = mapValue(data.x, 0.2, 0.8, 0, 2000);
     triangle.style.left = cursorLeft + 'px'; // Actualiza la posición horizontal del triángulo
 
     // Llama a la función para activar la detección de hover en base a las coordenadas del cursor
@@ -1031,9 +1031,42 @@ function activateHover(x, y) {
         console.log("País seleccionado:", countryName); // Muestra en consola el estado seleccionado
         oldCountryName = countryName; // Actualiza el estado anterior con el nuevo
         // Recorre los datos para encontrar el estado por su código y reproduce una descripción por audio
+      	// Función para calcular el promedio
+
+        // Lógica para manejar el evento de mouseover
+        function handleMouseOver(happinessIndex, average) {
+            if (happinessIndex === average) {
+                console.log(`Promedio - Suenan grillos`);
+                speakText("Cri cri, cri cri"); // Simulación de grillos
+                TextToSpeech.play("es-CL","Cri cri, cri cri")
+
+            } else if (happinessIndex > average) {
+                const intensity = Math.ceil(happinessIndex *15 - average);
+                console.log(`Feliz - ${intensity} personas riendo`);
+                let laughter = "Ja ".repeat(intensity).trim(); // Genera risa según intensidad
+              	TextToSpeech.play("es-CL", laughter)
+
+            } else {
+                const intensity = Math.ceil(average * 15 - happinessIndex);
+                console.log(`Triste - ${intensity} sonidos de tristeza`);
+                let sadness = "Buuu ".repeat(intensity).trim(); // Genera tristeza según intensidad
+              	TextToSpeech.play("es-CL",sadness)
+            }
+        }
+        
         data.forEach(function(el) {
             if (el.code == countryName) {
-                TextToSpeech.play("es-CL", el.Country + " tiene una poblacion de  " + parseInt(el["Population 2024"]) + " personas");
+              	//if (el.happiness_score > 1.1145134264232008){
+                //	TextToSpeech.play("es-CL", "Jajajaja");
+                //}
+              	//else if (el.happiness_score == 1.1145134264232008){
+                //	TextToSpeech.play("es-CL", "Cricri, cricri");
+                //}
+              	//else if (el.happiness_score < 1.1145134264232008){
+                //	TextToSpeech.play("es-CL", "Estoy triste");
+                //}
+              
+                handleMouseOver(el.happiness_score, 1.1145134264232008)
             }
         });
     }
